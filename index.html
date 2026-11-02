@@ -42,7 +42,8 @@
     }
   </style>
   <script>
-    const SHEET_CSV = "https://docs.google.com/spreadsheets/d/1lQUSR6J_ECkic4WziqpGFksxnIS0P2VKMkApOZ4jy1k/export?format=csv";
+    const SHEET_ID = "1lQUSR6J_ECkic4WziqpGFksxnIS0P2VKMkApOZ4jy1k";
+    const SHEET_CSV = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv";
 
     async function redirect() {
       const params = new URLSearchParams(window.location.search);
@@ -56,21 +57,21 @@
 
       try {
         const res = await fetch(SHEET_CSV);
-        if (!res.ok) throw new Error("Could not access Google Sheet. Verify it is set to 'Anyone with link can view'.");
+        if (!res.ok) throw new Error("Could not access Google Sheet. Check sharing permissions.");
 
         const text = await res.text();
-        const rows = text.split("\n").map(r => r.split(","));
+        const rows = text.split("\n").map(r => 
+          r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(val => val.replace(/^"|"$/g, '').trim())
+        );
 
         for (const row of rows) {
           const id = row[0] ? row[0].trim() : "";
-          const destination = row[2] ? row[2].trim().replace(/\r/g, "") : "";
+          const destination = row[2] ? row[2].trim() : "";
 
           if (id.toLowerCase() === targetId.toLowerCase()) {
             if (destination && destination.startsWith("http")) {
-              // Immediate automatic redirect
               window.location.replace(destination);
               
-              // Fallback button if the browser blocks automatic navigation
               setTimeout(() => {
                 document.getElementById("status").innerHTML = 
                   '<p>If it did not open automatically:</p>' +
