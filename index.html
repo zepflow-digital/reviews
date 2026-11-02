@@ -48,39 +48,46 @@
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz9PZklUVh7-iTFoT8Oj1bKv9ZkxvnMH6lYjqRo2D0lgfyz93EuOJTE0YQu7lqdDN9BQQ/exec";
-    const params = new URLSearchParams(window.location.search);
-    const targetId = params.get("id");
 
-    function handleResponse(data) {
-      if (data && data.destination && data.destination.startsWith("http")) {
-        window.location.replace(data.destination);
-        setTimeout(() => {
-          document.getElementById("status").innerHTML = 
-            '<p>If it did not open automatically:</p>' +
-            '<a class="btn" href="' + data.destination + '">Tap here to open Google Review</a>';
-          document.getElementById("spinner").style.display = "none";
-        }, 1500);
-      } else {
-        document.getElementById("status").innerText = "No review link assigned to " + targetId + " yet.";
-        document.getElementById("spinner").style.display = "none";
-      }
-    }
+    async function loadDestination() {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get("id");
 
-    window.onload = function() {
       if (!targetId) {
         document.getElementById("status").innerText = "Error: Missing QR ID in the link.";
         document.getElementById("spinner").style.display = "none";
         return;
       }
 
-      const script = document.createElement("script");
-      script.src = SCRIPT_URL + "?id=" + encodeURIComponent(targetId) + "&callback=handleResponse&_t=" + Date.now();
-      script.onerror = function() {
-        document.getElementById("status").innerText = "Error: Could not connect to redirect service.";
+      try {
+        const fetchUrl = SCRIPT_URL + "?id=" + encodeURIComponent(targetId);
+        const response = await fetch(fetchUrl, {
+          method: "GET",
+          redirect: "follow"
+        });
+
+        const data = await response.json();
+
+        if (data && data.destination && data.destination.startsWith("http")) {
+          window.location.replace(data.destination);
+
+          setTimeout(() => {
+            document.getElementById("status").innerHTML = 
+              '<p>If it did not open automatically:</p>' +
+              '<a class="btn" href="' + data.destination + '">Tap here to open Google Review</a>';
+            document.getElementById("spinner").style.display = "none";
+          }, 1500);
+        } else {
+          document.getElementById("status").innerText = "No review link assigned to " + targetId + " yet.";
+          document.getElementById("spinner").style.display = "none";
+        }
+      } catch (err) {
+        document.getElementById("status").innerText = "Error: " + err.message;
         document.getElementById("spinner").style.display = "none";
-      };
-      document.body.appendChild(script);
-    };
+      }
+    }
+
+    window.onload = loadDestination;
   </script>
 </body>
 </html>
