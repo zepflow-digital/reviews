@@ -41,14 +41,17 @@
       font-weight: 500;
     }
   </style>
+</head>
+<body>
+  <div class="spinner" id="spinner"></div>
+  <div id="status">Connecting to Google Reviews...</div>
+
   <script>
     const SHEET_ID = "1lQUSR6J_ECkic4WziqpGFksxnIS0P2VKMkApOZ4jy1k";
-    const SHEET_CSV = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv";
+    const params = new URLSearchParams(window.location.search);
+    const targetId = params.get("id");
 
-    async function redirect() {
-      const params = new URLSearchParams(window.location.search);
-      const targetId = params.get("id");
-
+    function handleSheetData(response) {
       if (!targetId) {
         document.getElementById("status").innerText = "Error: Missing QR ID in the link.";
         document.getElementById("spinner").style.display = "none";
@@ -56,17 +59,11 @@
       }
 
       try {
-        const res = await fetch(SHEET_CSV);
-        if (!res.ok) throw new Error("Could not access Google Sheet. Check sharing permissions.");
-
-        const text = await res.text();
-        const rows = text.split("\n").map(r => 
-          r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(val => val.replace(/^"|"$/g, '').trim())
-        );
-
+        const rows = response.table.rows;
         for (const row of rows) {
-          const id = row[0] ? row[0].trim() : "";
-          const destination = row[2] ? row[2].trim() : "";
+          // Column A is index 0 (QR ID), Column C is index 2 (Review Link)
+          const id = row.c[0] && row.c[0].v ? String(row.c[0].v).trim() : "";
+          const destination = row.c[2] && row.c[2].v ? String(row.c[2].v).trim() : "";
 
           if (id.toLowerCase() === targetId.toLowerCase()) {
             if (destination && destination.startsWith("http")) {
@@ -89,16 +86,27 @@
         document.getElementById("status").innerText = "ID " + targetId + " was not found in the spreadsheet.";
         document.getElementById("spinner").style.display = "none";
       } catch (err) {
-        document.getElementById("status").innerText = "Error: " + err.message;
+        document.getElementById("status").innerText = "Error parsing sheet: " + err.message;
         document.getElementById("spinner").style.display = "none";
       }
     }
 
-    window.onload = redirect;
+    window.onload = function() {
+      if (!targetId) {
+        document.getElementById("status").innerText = "Error: Missing QR ID in the link.";
+        document.getElementById("spinner").style.display = "none";
+        return;
+      }
+
+      // JSONP bypasses CORS completely by loading as a script tag
+      const script = document.createElement("script");
+      script.src = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=responseHandler:handleSheetData";
+      script.onerror = function() {
+        document.getElementById("status").innerText = "Error: Could not connect to Google Sheets. Verify the sheet is shared with 'Anyone with the link'.";
+        document.getElementById("spinner").style.display = "none";
+      };
+      document.body.appendChild(script);
+    };
   </script>
-</head>
-<body>
-  <div class="spinner" id="spinner"></div>
-  <div id="status">Connecting to Google Reviews...</div>
 </body>
 </html>
