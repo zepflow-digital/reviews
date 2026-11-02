@@ -100,7 +100,7 @@
 
       // JSONP bypasses CORS completely by loading as a script tag
       const script = document.createElement("script");
-      script.src = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=responseHandler:handleSheetData";
+      script.src = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=responseHandler:handleSheetData&_t=" + Date.now();
       script.onerror = function() {
         document.getElementById("status").innerText = "Error: Could not connect to Google Sheets. Verify the sheet is shared with 'Anyone with the link'.";
         document.getElementById("spinner").style.display = "none";
